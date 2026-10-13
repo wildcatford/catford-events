@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>What's on in Catford</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📅</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1F2E2C;
+    --muted: #62706D;
+    --rule: #E2E6E5;
+    --wash: #F3F5F4;
+    --paper: #FFFFFF;
+    --focus: #2F6F9F;
+    --font: "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font: 400 16px/1.45 var(--font); font-variant-numeric: tabular-nums;
+    padding: env(safe-area-inset-top, 0) 0 env(safe-area-inset-bottom, 0);
+  }
+  .wrap { max-width: 44rem; margin: 0 auto; padding: 0 1.25rem; }
+  a { color: inherit; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+
+  /* Header */
+  header.wrap { padding-top: 2rem; padding-bottom: 1rem; display: flex; flex-wrap: wrap; align-items: end;
+    justify-content: space-between; gap: .75rem 1rem; }
+  h1 { font-size: 1.75rem; line-height: 1.15; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
+  .sub { color: var(--muted); margin: .35rem 0 0; font-size: .95rem; }
+
+  /* List / Calendar switch */
+  .views { display: inline-flex; border: 1px solid var(--rule); border-radius: 999px; padding: 3px; }
+  .views button { background: none; border: 0; border-radius: 999px; padding: .3rem .85rem;
+    font-size: .9rem; font-weight: 500; cursor: pointer; }
+  .views button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+
+  /* Controls */
+  .controls { position: sticky; top: 0; z-index: 2; background: var(--paper);
+    padding: .75rem 0; border-bottom: 1px solid var(--rule); }
+  .controls:has(details[open]) { position: static; }
+  .ranges { display: flex; gap: .5rem; overflow-x: auto; scrollbar-width: none; margin: 0 -1.25rem; padding: 0 1.25rem; }
+  .ranges::-webkit-scrollbar { display: none; }
+  .chip { flex: none; font-size: .9rem; font-weight: 500;
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 999px;
+    padding: .4rem .85rem; cursor: pointer; }
+  .chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+
+  .monthnav { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+  .monthnav h2 { font-size: 1.15rem; font-weight: 600; margin: 0; }
+  .iconbtn { width: 2.25rem; height: 2.25rem; display: grid; place-items: center; cursor: pointer;
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 50%; }
+  .iconbtn:disabled { opacity: .35; cursor: default; }
+  .iconbtn svg { width: 1rem; height: 1rem; }
+  [hidden] { display: none !important; }
+
+  .filterrow { position: relative; margin-top: .6rem; }
+  .filterrow details.filters summary { padding-right: 9rem; }      /* room for the switch */
+  .switch { position: absolute; top: 0; right: 0; display: inline-flex; align-items: center; gap: .5rem; font-size: .9rem;
+    font-weight: 500; cursor: pointer; padding: .2rem 0; }
+  .switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .switch .track { width: 2.2rem; height: 1.3rem; border-radius: 999px; background: var(--rule);
+    position: relative; flex: none; }
+  .switch .track::after { content: ""; position: absolute; top: .15rem; left: .15rem; width: 1rem; height: 1rem;
+    border-radius: 50%; background: var(--paper); box-shadow: 0 0 0 1px var(--rule); }
+  .switch input:checked + .track { background: var(--ink); }
+  .switch input:checked + .track::after { left: 1.05rem; box-shadow: none; }
+  .switch input:focus-visible + .track { outline: 2px solid var(--focus); outline-offset: 2px; }
+  details.filters { margin-top: 0; }
+  details.filters summary { cursor: pointer; font-weight: 600; font-size: .95rem; list-style: none;
+    display: inline-flex; align-items: center; gap: .4rem; padding: .2rem 0; }
+  details.filters summary::-webkit-details-marker { display: none; }
+  details.filters summary::before { content: "+"; display: inline-block; width: 1ch; font-weight: 500; }
+  details.filters[open] summary::before { content: "\2212"; }
+  .active-count { color: var(--muted); font-weight: 500; }
+  .panel { padding: .75rem 0 .25rem; display: grid; gap: 1.1rem; }
+  fieldset { border: 0; margin: 0; padding: 0; }
+  legend { font-weight: 600; font-size: .85rem; color: var(--muted); padding: 0; margin-bottom: .45rem; }
+  .opts { display: flex; flex-wrap: wrap; gap: .45rem; }
+  .opt { position: relative; }
+  .opt input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .opt > span { display: inline-flex; align-items: center; gap: .45rem; font-size: .9rem;
+    border: 1px solid var(--rule); border-radius: 999px; padding: .35rem .75rem; }
+  .opt input:checked + span { background: var(--wash); border-color: var(--ink); }
+  .opt input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .opt .n { color: var(--muted); }
+  .dot { width: .6rem; height: .6rem; border-radius: 50%; flex: none; background: var(--c); }
+  .clear { font-size: .9rem; background: none; border: 0; padding: 0;
+    text-decoration: underline; text-underline-offset: 3px; cursor: pointer; justify-self: start; }
+
+  /* List view */
+  .summary { color: var(--muted); font-size: .9rem; margin: 1rem 0 .25rem; }
+  .day { display: grid; grid-template-columns: 3.75rem 1fr; gap: 0 1rem;
+    padding: 1.1rem 0; border-bottom: 1px solid var(--rule); }
+  .spine { align-self: start; line-height: 1; }
+  .spine .num { display: block; font-size: 2.6rem; font-weight: 600; letter-spacing: -0.04em; }
+  .spine .dow { display: block; margin-top: .3rem; font-size: .85rem; font-weight: 600; }
+  .spine .mon { display: block; font-size: .85rem; color: var(--muted); margin-top: .1rem; }
+  .spine.today .num { color: var(--focus); }
+  ol.items { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; }
+  .ev { display: grid; grid-template-columns: 3.4rem 1fr; gap: .75rem; }
+  .ev time { font-size: .9rem; color: var(--muted); padding-top: .15rem; }
+  .ev h3 { font-size: 1.05rem; line-height: 1.3; font-weight: 600; margin: 0; overflow-wrap: anywhere; }
+  .ev h3 a { text-decoration: none; }
+  .ev h3 a:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .meta { display: flex; flex-wrap: wrap; align-items: center; gap: .2rem 1rem;
+    margin-top: .3rem; font-size: .88rem; color: var(--muted); }
+  .meta .venue { display: inline-flex; align-items: center; gap: .4rem; color: var(--ink); }
+  .meta .free { color: var(--ink); font-weight: 600; }
+  .run { font-size: .85rem; color: var(--muted); margin-top: .2rem; }
+
+  /* Calendar view */
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); margin: 1rem 0 0; }
+  .cal .wd { text-align: center; font-size: .8rem; font-weight: 600; color: var(--muted); padding-bottom: .4rem; }
+  .cell { background: none; border: 0; border-top: 1px solid var(--rule); padding: .35rem 0 .45rem;
+    min-height: 3.4rem; display: flex; flex-direction: column; align-items: center; gap: .3rem; cursor: pointer; }
+  .cell .d { width: 2rem; height: 2rem; display: grid; place-items: center; border-radius: 50%;
+    font-size: .95rem; font-weight: 500; }
+  .cell.out .d { color: var(--muted); opacity: .45; }
+  .cell.today .d { color: var(--focus); font-weight: 700; }
+  .cell[aria-pressed="true"] .d { background: var(--ink); color: var(--paper); opacity: 1; }
+  .dots { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; max-width: 2.6rem; min-height: .45rem; }
+  .dots i { width: .45rem; height: .45rem; border-radius: 50%; background: var(--c); }
+  .dots i.ring { background: none; box-shadow: inset 0 0 0 1.5px var(--c); }
+  .dots .more { font-size: .65rem; line-height: .45rem; color: var(--muted); font-style: normal; }
+  .key { display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; font-size: .82rem; color: var(--muted);
+    padding: .6rem 0 0; border-top: 1px solid var(--rule); }
+  .key span { display: inline-flex; align-items: center; gap: .4rem; }
+  .key i { width: .55rem; height: .55rem; border-radius: 50%; background: var(--muted); }
+  .key i.ring { background: none; box-shadow: inset 0 0 0 1.5px var(--muted); }
+  .dayhead { font-size: 1.15rem; font-weight: 600; margin: 1.5rem 0 1rem; }
+  .daylist { padding-bottom: 1rem; border-bottom: 1px solid var(--rule); }
+  .daylist .ev { grid-template-columns: 3.4rem 1fr; }
+
+  .state { padding: 2.5rem 0; }
+  .state p { margin: 0 0 .75rem; }
+  footer.wrap { color: var(--muted); font-size: .85rem; padding-top: 2rem; padding-bottom: 3rem; }
+
+  @media (min-width: 40rem) {
+    h1 { font-size: 2.1rem; }
+    .day { grid-template-columns: 5rem 1fr; }
+    .spine .num { font-size: 3.2rem; }
+    .cell { min-height: 4.5rem; }
+    .dots { max-width: 3.4rem; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .chip, .opt span, .views button, .cell .d { transition: background-color .15s, color .15s, border-color .15s; }
+    .switch .track, .switch .track::after { transition: background-color .15s, left .15s; }
+  }
+</style>
+</head>
+<body>
+<header class="wrap">
+  <div>
+    <h1>What's on in Catford</h1>
+    <p class="sub">Events from six local venues, collected daily.</p>
+  </div>
+  <div class="views" role="group" aria-label="View">
+    <button type="button" data-view="list">List</button>
+    <button type="button" data-view="calendar">Calendar</button>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="wrap">
+    <div class="ranges" id="ranges" role="group" aria-label="Dates">
+      <button class="chip" data-range="week">Next 7 days</button>
+      <button class="chip" data-range="weekend">Weekend</button>
+      <button class="chip" data-range="month">30 days</button>
+      <button class="chip" data-range="all">All</button>
+    </div>
+    <div class="monthnav" id="monthnav" hidden>
+      <button class="iconbtn" id="prev" type="button" aria-label="Previous month">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 5 8l5 5"/></svg>
+      </button>
+      <h2 id="monthlabel"></h2>
+      <button class="iconbtn" id="next" type="button" aria-label="Next month">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 3 5 5-5 5"/></svg>
+      </button>
+    </div>
+    <div class="filterrow">
+    <details class="filters" id="filters">
+      <summary>Filters <span class="active-count" id="active-count"></span></summary>
+      <div class="panel">
+        <fieldset><legend>Venue</legend><div class="opts" id="venue-opts"></div></fieldset>
+        <fieldset><legend>Type</legend><div class="opts" id="type-opts"></div></fieldset>
+        <fieldset><legend>Price</legend>
+          <div class="opts" id="price-opts">
+            <label class="opt"><input type="radio" name="price" value="" checked><span>Any</span></label>
+            <label class="opt"><input type="radio" name="price" value="free"><span>Free</span></label>
+            <label class="opt"><input type="radio" name="price" value="paid"><span>Paid</span></label>
+          </div>
+        </fieldset>
+        <button class="clear" id="clear" type="button">Clear filters</button>
+      </div>
+    </details>
+    <label class="switch"><input type="checkbox" id="show-classes"><span class="track" aria-hidden="true"></span>Show classes</label>
+    </div>
+  </div>
+</div>
+
+<main class="wrap" id="main" aria-live="polite"></main>
+
+<footer class="wrap"><p id="updated" hidden></p>Times and prices come from each venue's website. Check there before you go.
+  <p id="review-link" hidden><a href="/review"></a></p></footer>
+
+<script>window.CATFORD_STATIC = "data.json";</script>
+<script>
+// ---------------------------------------------------------------------------
+// State: what the visitor is looking at. Mirrored in the address bar.
+// ---------------------------------------------------------------------------
+const state = {
+  view: "list",        // "list" or "calendar"
+  range: "week",       // list view: week | weekend | month | all
+  month: null,         // calendar view: first day of the month shown (Date)
+  day: null,           // calendar view: selected day (Date)
+  venues: [], types: [], price: "",
+  classes: false,      // regular classes (e.g. Abbotshall's timetable) are hidden unless switched on
+};
+let venueInfo = {};
+let requestId = 0;     // ignore slow, out-of-date responses
+
+// ---- Dates (all in the visitor's local time) ----
+const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const parseDay = s => { const [y, m, d] = s.slice(0, 10).split("-").map(Number); return new Date(y, m - 1, d || 1); };
+const today = () => { const t = new Date(); t.setHours(0, 0, 0, 0); return t; };
+const firstOfMonth = d => new Date(d.getFullYear(), d.getMonth(), 1);
+const sameDay = (a, b) => a && b && iso(a) === iso(b);
+
+const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DOW_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MON_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const shortDate = d => `${d.getDate()} ${MON[d.getMonth()]}`;
+
+function rangeDates(range) {
+  const t = today();
+  if (range === "week") return [t, addDays(t, 6)];
+  if (range === "month") return [t, addDays(t, 29)];
+  if (range === "weekend") {
+    const dow = t.getDay();                     // 0 = Sunday, 6 = Saturday
+    if (dow === 0) return [t, t];
+    const sat = dow === 6 ? t : addDays(t, 6 - dow);
+    return [sat, addDays(sat, 1)];
+  }
+  return [t, null];                             // everything upcoming
+}
+
+// The calendar grid runs Monday to Sunday, covering the whole month.
+function gridDates(month) {
+  const start = addDays(month, -((month.getDay() + 6) % 7));
+  const last = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+  const end = addDays(last, (7 - last.getDay()) % 7);
+  return [start, end];
+}
+
+// ---- Address bar <-> state, so any view can be shared as a link ----
+function readUrl() {
+  const p = new URLSearchParams(location.search);
+  state.view = p.get("view") === "calendar" ? "calendar" : "list";
+  if (p.get("when")) state.range = p.get("when");
+  if (/^\d{4}-\d{2}$/.test(p.get("month") || "")) state.month = parseDay(p.get("month"));
+  if (/^\d{4}-\d{2}-\d{2}$/.test(p.get("day") || "")) state.day = parseDay(p.get("day"));
+  state.venues = p.getAll("venue");
+  state.types = p.getAll("type");
+  state.price = p.get("price") || "";
+  state.classes = p.get("classes") === "show";
+}
+function writeUrl() {
+  const p = new URLSearchParams();
+  if (state.view === "calendar") {
+    p.set("view", "calendar");
+    p.set("month", iso(state.month).slice(0, 7));
+    if (state.day) p.set("day", iso(state.day));
+  } else if (state.range !== "week") {
+    p.set("when", state.range);
+  }
+  state.venues.forEach(v => p.append("venue", v));
+  state.types.forEach(t => p.append("type", t));
+  if (state.price) p.set("price", state.price);
+  if (state.classes) p.set("classes", "show");
+  const q = p.toString();
+  history.replaceState(null, "", q ? `?${q}` : location.pathname);
+}
+
+// ---- Filter options ----
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+function checkbox(group, value, label, before = "", after = "") {
+  const checked = state[group].includes(value) ? "checked" : "";
+  return `<label class="opt"><input type="checkbox" data-group="${group}" value="${esc(value)}" ${checked}>` +
+         `<span>${before}${esc(label)}${after}</span></label>`;
+}
+
+async function loadOptions() {
+  const data = await getOptions();
+  venueInfo = Object.fromEntries(data.venues.map(v => [v.id, v]));
+  document.getElementById("venue-opts").innerHTML = data.venues.map(v =>
+    checkbox("venues", v.id, v.name, `<i class="dot" style="--c:${v.colour}"></i>`, ` <span class="n">${v.count}</span>`)).join("");
+  const types = data.categories.filter(c => c !== "Class");     // the "Show classes" switch covers these
+  document.getElementById("type-opts").innerHTML = types.length
+    ? types.map(c => checkbox("types", c, c)).join("")
+    : `<span class="opt"><span>No types yet</span></span>`;
+  document.querySelector(`#price-opts input[value="${state.price}"]`).checked = true;
+  if (data.last_collected) {
+    const when = new Date(data.last_collected);
+    const days = Math.round((today() - new Date(when.getFullYear(), when.getMonth(), when.getDate())) / 86400000);
+    const dayText = days === 0 ? "today" : days === 1 ? "yesterday" : `${days} days ago`;
+    const time = `${String(when.getHours()).padStart(2, "0")}:${String(when.getMinutes()).padStart(2, "0")}`;
+    const el = document.getElementById("updated");
+    el.textContent = `Updated ${dayText} at ${time}.` + (days > 2 ? " Listings may be out of date." : "");
+    el.hidden = false;
+  }
+  // Only on the computer running the app: a reminder that some events need checking.
+  if (data.to_review && !STATIC && ["localhost", "127.0.0.1"].includes(location.hostname)) {
+    const p = document.getElementById("review-link");
+    p.querySelector("a").textContent = `${data.to_review} event${data.to_review > 1 ? "s" : ""} to check`;
+    p.hidden = false;
+  }
+}
+
+// ---- Fetching events ----
+// Two modes. Normally the page asks app.py. The published copy (made by
+// export.py) has window.CATFORD_STATIC set: it loads one data file instead and
+// filters in the browser, following the same rules as db.find_events.
+const STATIC = window.CATFORD_STATIC || null;
+let staticData = null;
+async function getStatic() {
+  if (!staticData) {
+    const res = await fetch(STATIC);
+    if (!res.ok) throw new Error(res.status);
+    staticData = await res.json();
+  }
+  return staticData;
+}
+
+async function getOptions() {
+  if (STATIC) return (await getStatic()).options;
+  return (await fetch("/api/options")).json();
+}
+
+function filterEvents(events, from, to) {
+  const f = iso(from), t = to ? iso(to) : null;
+  return events.filter(e =>
+    (e.end || e.start) >= f &&
+    (!t || e.start.slice(0, 10) <= t) &&
+    (!state.venues.length || state.venues.includes(e.venue_id)) &&
+    (!state.types.length || state.types.includes(e.category)) &&
+    (state.price !== "free" || e.is_free === 1) &&
+    (state.price !== "paid" || e.is_free === 0) &&
+    (state.classes || e.category !== "Class"));
+}
+
+async function fetchEvents(from, to) {
+  if (STATIC) return filterEvents((await getStatic()).events, from, to);
+  const p = new URLSearchParams({ from: iso(from) });
+  if (to) p.set("to", iso(to));
+  state.venues.forEach(v => p.append("venue", v));
+  state.types.forEach(t => p.append("type", t));
+  if (state.price) p.set("price", state.price);
+  if (!state.classes) p.set("classes", "hide");
+  const res = await fetch(`/api/events?${p}`);
+  if (!res.ok) throw new Error(res.status);
+  return (await res.json()).events;
+}
+
+async function load() {
+  const id = ++requestId;
+  const main = document.getElementById("main");
+  try {
+    if (state.view === "calendar") {
+      const [from, to] = gridDates(state.month);
+      const events = await fetchEvents(from, to);
+      if (id === requestId) renderCalendar(events, from, to);
+    } else {
+      const [from, to] = rangeDates(state.range);
+      const events = await fetchEvents(from, to);
+      if (id === requestId) renderList(events, from);
+    }
+  } catch {
+    if (id === requestId) main.innerHTML = `<div class="state"><p>${STATIC
+      ? "Events couldn't be loaded. Check your connection and refresh the page."
+      : "Events couldn't be loaded. Check that the app is still running in PowerShell, then refresh this page."}</p></div>`;
+  }
+}
+
+// ---- Shared pieces ----
+const isRun = e => e.end && e.end.slice(0, 10) !== e.start.slice(0, 10);
+const filtersOn = () => state.venues.length || state.types.length || state.price;
+
+function shortPrice(e) {
+  if (e.is_free === 1) return `<span class="free">Free</span>`;
+  if (!e.price_text) return "";
+  return `<span>${esc(e.price_text.split(" (")[0])}</span>`;
+}
+
+// One event row. `onDay` is the day it's being shown under.
+function eventHtml(e, onDay) {
+  const start = parseDay(e.start);
+  const time = e.start.length > 10 ? e.start.slice(11, 16) : "";
+  const v = venueInfo[e.venue_id] || { colour: "#62706D" };
+  let run = "";
+  if (isRun(e)) {
+    const end = parseDay(e.end);
+    run = start < onDay ? `On now, until ${shortDate(end)}` : `Runs until ${shortDate(end)}`;
+  }
+  return `<li class="ev">
+    <time>${start < onDay ? "" : time}</time>
+    <div>
+      <h3><a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.title)}</a></h3>
+      ${run ? `<div class="run">${run}</div>` : ""}
+      <div class="meta">
+        <span class="venue"><i class="dot" style="--c:${v.colour}"></i>${esc(e.venue_name)}</span>
+        ${e.category ? `<span>${esc(e.category)}</span>` : ""}
+        ${shortPrice(e)}
+      </div>
+    </div>
+  </li>`;
+}
+
+function emptyHtml(widenTo) {
+  if (filtersOn()) return `<div class="state"><p>No events match these filters.</p>
+    <button class="clear" type="button" data-action="clear">Clear filters</button></div>`;
+  const classesNote = state.classes ? "" :
+    `<p>Classes are hidden. <button class="clear" type="button" data-action="show-classes">Show classes</button></p>`;
+  return `<div class="state"><p>Nothing on in this period yet.</p>${classesNote}
+    ${widenTo ? `<button class="clear" type="button" data-action="widen">Show the next 30 days</button>` : ""}</div>`;
+}
+
+// ---- List view ----
+function renderList(events, from) {
+  const main = document.getElementById("main");
+  if (!events.length) { main.innerHTML = emptyHtml(state.range !== "all"); return; }
+  // Group by day. Shows that started earlier appear on the first day shown.
+  const days = new Map();
+  for (const e of events) {
+    const key = iso(parseDay(e.start) < from ? from : parseDay(e.start));
+    if (!days.has(key)) days.set(key, []);
+    days.get(key).push(e);
+  }
+  const t = today();
+  const groups = [...days.keys()].sort().map(key => {
+    const d = parseDay(key);
+    const label = sameDay(d, t) ? "Today" : sameDay(d, addDays(t, 1)) ? "Tomorrow" : DOW[d.getDay()];
+    return `<section class="day" aria-label="${label} ${shortDate(d)}">
+      <div class="spine${sameDay(d, t) ? " today" : ""}">
+        <span class="num">${d.getDate()}</span><span class="dow">${label}</span><span class="mon">${MON[d.getMonth()]}</span>
+      </div>
+      <ol class="items">${days.get(key).map(e => eventHtml(e, parseDay(key))).join("")}</ol>
+    </section>`;
+  }).join("");
+  const n = events.length;
+  main.innerHTML = `<p class="summary">${n} event${n === 1 ? "" : "s"}</p>${groups}`;
+}
+
+// ---- Calendar view ----
+function eventsOnDay(events, day) {
+  const key = iso(day);
+  return events.filter(e => isRun(e)
+    ? e.start.slice(0, 10) <= key && key <= e.end.slice(0, 10)
+    : e.start.slice(0, 10) === key);
+}
+
+function pickDay(events) {
+  // Keep the chosen day if it's in this month; else today; else the first day with something on.
+  if (state.day && state.day.getMonth() === state.month.getMonth() && state.day.getFullYear() === state.month.getFullYear()) return state.day;
+  const t = today();
+  if (t.getMonth() === state.month.getMonth() && t.getFullYear() === state.month.getFullYear()) return t;
+  const first = events.map(e => parseDay(e.start)).filter(d => d.getMonth() === state.month.getMonth() && d.getFullYear() === state.month.getFullYear()).sort((a, b) => a - b)[0];
+  return first || state.month;
+}
+
+function renderCalendar(events, from, to) {
+  state.day = pickDay(events);
+  writeUrl();
+  const t = today();
+  const MAX_DOTS = 4;
+  let cells = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(w => `<div class="wd" aria-hidden="true">${w.slice(0, 1)}</div>`).join("");
+  for (let d = new Date(from); d <= to; d = addDays(d, 1)) {
+    const on = eventsOnDay(events, d);
+    // One-off events first (a solid dot each), then one ring per venue with
+    // something running, so a museum with four exhibitions doesn't fill every day.
+    const colour = id => (venueInfo[id] || {}).colour || "#62706D";
+    const singles = on.filter(e => !isRun(e));
+    const runVenues = [...new Set(on.filter(isRun).map(e => e.venue_id))];
+    const marks = [...singles.map(e => `<i style="--c:${colour(e.venue_id)}"></i>`),
+                   ...runVenues.map(v => `<i class="ring" style="--c:${colour(v)}"></i>`)];
+    const dots = marks.slice(0, MAX_DOTS).join("")
+      + (marks.length > MAX_DOTS ? `<em class="more">+${marks.length - MAX_DOTS}</em>` : "");
+    const classes = ["cell", d.getMonth() !== state.month.getMonth() ? "out" : "", sameDay(d, t) ? "today" : ""].join(" ").trim();
+    const label = `${DOW_LONG[d.getDay()]} ${d.getDate()} ${MON_LONG[d.getMonth()]}, ${on.length ? on.length + " event" + (on.length > 1 ? "s" : "") : "nothing on"}`;
+    cells += `<button type="button" class="${classes}" data-day="${iso(d)}" aria-pressed="${sameDay(d, state.day)}" aria-label="${label}">
+      <span class="d">${d.getDate()}</span><span class="dots">${dots}</span></button>`;
+  }
+
+  const day = state.day;
+  const onDay = eventsOnDay(events, day);
+  const dayLabel = sameDay(day, t) ? "Today" : sameDay(day, addDays(t, 1)) ? "Tomorrow" : DOW_LONG[day.getDay()];
+  const dayHtml = onDay.length
+    ? `<ol class="items daylist">${[...onDay.filter(e => !isRun(e)), ...onDay.filter(isRun)].map(e => eventHtml(e, day)).join("")}</ol>`
+    : `<p class="state" style="padding:0 0 1rem">${filtersOn() ? "No events match these filters on this day." : "Nothing on this day."}
+       ${state.classes ? "" : ` Classes are hidden. <button class="clear" type="button" data-action="show-classes">Show classes</button>`}</p>`;
+
+  document.getElementById("main").innerHTML = `
+    <div class="cal">${cells}</div>
+    <div class="key"><span><i></i>Event that day</span><span><i class="ring"></i>Shows or exhibitions running</span></div>
+    <h2 class="dayhead">${dayLabel} ${day.getDate()} ${MON_LONG[day.getMonth()]}</h2>
+    ${dayHtml}`;
+}
+
+// ---- Wiring up the controls ----
+function syncControls() {
+  const cal = state.view === "calendar";
+  document.querySelectorAll(".views button").forEach(b => b.setAttribute("aria-pressed", b.dataset.view === state.view));
+  document.getElementById("ranges").hidden = cal;
+  document.getElementById("monthnav").hidden = !cal;
+  document.querySelectorAll(".chip").forEach(b => b.setAttribute("aria-pressed", b.dataset.range === state.range));
+  if (cal) {
+    document.getElementById("monthlabel").textContent = `${MON_LONG[state.month.getMonth()]} ${state.month.getFullYear()}`;
+    document.getElementById("prev").disabled = state.month <= firstOfMonth(today());   // no past months
+  }
+  document.getElementById("show-classes").checked = state.classes;
+  const active = state.venues.length + state.types.length + (state.price ? 1 : 0);
+  document.getElementById("active-count").textContent = active ? `(${active} on)` : "";
+}
+function update() { syncControls(); writeUrl(); load(); }
+
+function clearFilters() {
+  state.venues = []; state.types = []; state.price = "";
+  document.querySelectorAll("#filters input[type=checkbox]").forEach(i => i.checked = false);
+  document.querySelector('#price-opts input[value=""]').checked = true;
+  update();
+}
+
+document.querySelector(".views").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b || b.dataset.view === state.view) return;
+  state.view = b.dataset.view;
+  if (state.view === "calendar" && !state.month) state.month = firstOfMonth(today());
+  update();
+});
+document.getElementById("ranges").addEventListener("click", e => {
+  const b = e.target.closest(".chip"); if (!b) return;
+  state.range = b.dataset.range; update();
+});
+function moveMonth(step) {
+  state.month = new Date(state.month.getFullYear(), state.month.getMonth() + step, 1);
+  state.day = null;
+  update();
+}
+document.getElementById("prev").addEventListener("click", () => moveMonth(-1));
+document.getElementById("next").addEventListener("click", () => moveMonth(1));
+document.getElementById("main").addEventListener("click", e => {
+  const cell = e.target.closest(".cell");
+  if (cell) {
+    const d = parseDay(cell.dataset.day);
+    state.day = d;
+    if (d.getMonth() !== state.month.getMonth()) state.month = firstOfMonth(d);   // tapped a neighbouring month's day
+    update();
+    return;
+  }
+  const action = e.target.closest("[data-action]")?.dataset.action;
+  if (action === "clear") clearFilters();
+  if (action === "widen") { state.range = "month"; update(); }
+  if (action === "show-classes") { state.classes = true; update(); }
+});
+document.getElementById("filters").addEventListener("change", e => {
+  const i = e.target;
+  if (i.name === "price") state.price = i.value;
+  else if (i.dataset.group) state[i.dataset.group] = [...document.querySelectorAll(`input[data-group="${i.dataset.group}"]:checked`)].map(x => x.value);
+  update();
+});
+document.getElementById("clear").addEventListener("click", clearFilters);
+document.getElementById("show-classes").addEventListener("change", e => {
+  state.classes = e.target.checked; update();
+});
+
+(async () => {
+  readUrl();
+  if (!state.month || state.month < firstOfMonth(today())) state.month = firstOfMonth(state.day || today());
+  if (state.month < firstOfMonth(today())) state.month = firstOfMonth(today());
+  if (filtersOn()) document.getElementById("filters").open = true;
+  syncControls();
+  try { await loadOptions(); } catch { /* the events request will report the problem */ }
+  load();
+})();
+</script>
+</body>
+</html>
