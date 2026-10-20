@@ -393,7 +393,15 @@ async function load() {
 }
 
 // ---- Shared pieces ----
-const isRun = e => e.end && e.end.slice(0, 10) !== e.start.slice(0, 10);
+// A "run" spans several days (a show's season, an exhibition). An event that
+// just goes past midnight (22:00 to 04:00) is not a run: it belongs to its start day.
+const isRun = e => {
+  if (!e.end || e.end.slice(0, 10) === e.start.slice(0, 10)) return false;
+  if (e.start.length > 10 && e.end.length > 10) {
+    return (new Date(e.end) - new Date(e.start)) >= 24 * 3600 * 1000;
+  }
+  return true;
+};
 const filtersOn = () => state.venues.length || state.types.length || state.price;
 
 function shortPrice(e) {
@@ -439,13 +447,16 @@ function emptyHtml(widenTo) {
 function renderList(events, from) {
   const main = document.getElementById("main");
   if (!events.length) { main.innerHTML = emptyHtml(state.range !== "all"); return; }
-  // Group by day. Shows that started earlier appear on the first day shown.
+  // Group by day. Shows that started earlier appear on the first day shown;
+  // one-off events from before that (last night's late gig) are left out.
   const days = new Map();
   for (const e of events) {
+    if (!isRun(e) && parseDay(e.start) < from) continue;
     const key = iso(parseDay(e.start) < from ? from : parseDay(e.start));
     if (!days.has(key)) days.set(key, []);
     days.get(key).push(e);
   }
+  if (!days.size) { main.innerHTML = emptyHtml(state.range !== "all"); return; }
   const t = today();
   const groups = [...days.keys()].sort().map(key => {
     const d = parseDay(key);
@@ -457,7 +468,7 @@ function renderList(events, from) {
       <ol class="items">${days.get(key).map(e => eventHtml(e, parseDay(key))).join("")}</ol>
     </section>`;
   }).join("");
-  const n = events.length;
+  const n = [...days.values()].reduce((sum, list) => sum + list.length, 0);
   main.innerHTML = `<p class="summary">${n} event${n === 1 ? "" : "s"}</p>${groups}`;
 }
 
