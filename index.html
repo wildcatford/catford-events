@@ -1,13 +1,11 @@
 <!doctype html>
 <html lang="en-GB">
 <head>
+<meta name="robots" content="noindex, nofollow">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>What's on in Catford</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📅</text></svg>">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --ink: #1F2E2C;
@@ -16,7 +14,7 @@
     --wash: #F3F5F4;
     --paper: #FFFFFF;
     --focus: #2F6F9F;
-    --font: "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   }
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
@@ -114,6 +112,8 @@
     margin-top: .3rem; font-size: .88rem; color: var(--muted); }
   .meta .venue { display: inline-flex; align-items: center; gap: .4rem; color: var(--ink); }
   .meta .free { color: var(--ink); font-weight: 600; }
+  .hide-btn { background: none; border: 0; padding: 0; font-size: .82rem; color: var(--muted);
+    text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
   .run { font-size: .85rem; color: var(--muted); margin-top: .2rem; }
 
   /* Calendar view */
@@ -160,7 +160,7 @@
 <header class="wrap">
   <div>
     <h1>What's on in Catford</h1>
-    <p class="sub">Events from six local venues, collected daily.</p>
+    <p class="sub">Events from local venues, collected daily.</p>
   </div>
   <div class="views" role="group" aria-label="View">
     <button type="button" data-view="list">List</button>
@@ -320,9 +320,12 @@ async function loadOptions() {
     el.hidden = false;
   }
   // Only on the computer running the app: a reminder that some events need checking.
-  if (data.to_review && !STATIC && ["localhost", "127.0.0.1"].includes(location.hostname)) {
+  if (ADMIN && (data.to_review || data.problems)) {
+    const parts = [];
+    if (data.to_review) parts.push(`${data.to_review} event${data.to_review > 1 ? "s" : ""} to check`);
+    if (data.problems) parts.push(`${data.problems} collection problem${data.problems > 1 ? "s" : ""}`);
     const p = document.getElementById("review-link");
-    p.querySelector("a").textContent = `${data.to_review} event${data.to_review > 1 ? "s" : ""} to check`;
+    p.querySelector("a").textContent = parts.join(" · ");
     p.hidden = false;
   }
 }
@@ -332,6 +335,8 @@ async function loadOptions() {
 // export.py) has window.CATFORD_STATIC set: it loads one data file instead and
 // filters in the browser, following the same rules as db.find_events.
 const STATIC = window.CATFORD_STATIC || null;
+// Your own computer running app.py: allowed to hide events (the server checks this too).
+const ADMIN = !STATIC && ["localhost", "127.0.0.1"].includes(location.hostname);
 let staticData = null;
 async function getStatic() {
   if (!staticData) {
@@ -429,6 +434,7 @@ function eventHtml(e, onDay) {
         <span class="venue"><i class="dot" style="--c:${v.colour}"></i>${esc(e.venue_name)}</span>
         ${e.category ? `<span>${esc(e.category)}</span>` : ""}
         ${shortPrice(e)}
+        ${ADMIN ? `<button type="button" class="hide-btn" data-hide="${esc(e.uid)}" data-title="${esc(e.title)}">Hide</button>` : ""}
       </div>
     </div>
   </li>`;
@@ -544,6 +550,16 @@ function syncControls() {
 }
 function update() { syncControls(); writeUrl(); load(); }
 
+async function hideEvent(uid, title) {
+  if (!confirm(`Hide "${title}" from the site?\n\nYou can show it again from the review page.`)) return;
+  const res = await fetch("/api/review", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ uid, status: "hidden" }),
+  });
+  if (!res.ok) { alert("Couldn't hide it. Check the app is still running, then try again."); return; }
+  load();
+}
+
 function clearFilters() {
   state.venues = []; state.types = []; state.price = "";
   document.querySelectorAll("#filters input[type=checkbox]").forEach(i => i.checked = false);
@@ -577,6 +593,8 @@ document.getElementById("main").addEventListener("click", e => {
     update();
     return;
   }
+  const hide = e.target.closest("[data-hide]");
+  if (hide) { hideEvent(hide.dataset.hide, hide.dataset.title); return; }
   const action = e.target.closest("[data-action]")?.dataset.action;
   if (action === "clear") clearFilters();
   if (action === "widen") { state.range = "month"; update(); }
