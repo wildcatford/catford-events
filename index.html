@@ -112,6 +112,8 @@
     margin-top: .3rem; font-size: .88rem; color: var(--muted); }
   .meta .venue { display: inline-flex; align-items: center; gap: .4rem; color: var(--ink); }
   .meta .free { color: var(--ink); font-weight: 600; }
+  .cal-link { font-size: .82rem; color: var(--muted); text-underline-offset: 3px; }
+  .cal-link:hover { color: var(--ink); }
   .hide-btn { background: none; border: 0; padding: 0; font-size: .82rem; color: var(--muted);
     text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
   .run { font-size: .85rem; color: var(--muted); margin-top: .2rem; }
@@ -415,6 +417,40 @@ function shortPrice(e) {
   return `<span>${esc(e.price_text.split(" (")[0])}</span>`;
 }
 
+// ---- "Add to calendar": a Google Calendar link with the event filled in ----
+const pad2 = n => String(n).padStart(2, "0");
+const gDay = d => `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}`;
+const gTime = d => `${gDay(d)}T${pad2(d.getHours())}${pad2(d.getMinutes())}00`;
+const DEFAULT_HOURS = 2;          // when only a start time is known
+
+function calendarUrl(e, onDay) {
+  let dates;
+  if (isRun(e)) {
+    // A long run or exhibition: an all-day entry on the day being looked at,
+    // not a block lasting weeks or months.
+    const day = parseDay(e.start) < onDay ? onDay : parseDay(e.start);
+    dates = `${gDay(day)}/${gDay(addDays(day, 1))}`;
+  } else if (e.start.length > 10) {
+    const start = new Date(e.start);                       // London clock time as written
+    const end = e.end && e.end.length > 10 ? new Date(e.end)
+      : new Date(start.getTime() + DEFAULT_HOURS * 3600 * 1000);
+    dates = `${gTime(start)}/${gTime(end)}`;
+  } else {
+    const day = parseDay(e.start);                          // no time: all day
+    dates = `${gDay(day)}/${gDay(addDays(day, 1))}`;
+  }
+  const v = venueInfo[e.venue_id] || {};
+  const details = [e.price_text ? `Price: ${e.price_text}` : "",
+                   e.url ? `More info: ${e.url}` : "",
+                   "Found on What's on in Catford"].filter(Boolean).join("\n");
+  const params = new URLSearchParams({
+    action: "TEMPLATE", text: e.title, dates, details,
+    location: [v.name, v.address].filter(Boolean).join(", "),
+    ctz: "Europe/London",                                   // times are London time
+  });
+  return `https://calendar.google.com/calendar/render?${params}`;
+}
+
 // One event row. `onDay` is the day it's being shown under.
 function eventHtml(e, onDay) {
   const start = parseDay(e.start);
@@ -434,6 +470,8 @@ function eventHtml(e, onDay) {
         <span class="venue"><i class="dot" style="--c:${v.colour}"></i>${esc(e.venue_name)}</span>
         ${e.category ? `<span>${esc(e.category)}</span>` : ""}
         ${shortPrice(e)}
+        <a class="cal-link" href="${esc(calendarUrl(e, onDay))}" target="_blank" rel="noopener"
+           aria-label="Add ${esc(e.title)} to Google Calendar">Add to calendar</a>
         ${ADMIN ? `<button type="button" class="hide-btn" data-hide="${esc(e.uid)}" data-title="${esc(e.title)}">Hide</button>` : ""}
       </div>
     </div>
