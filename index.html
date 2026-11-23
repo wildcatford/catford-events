@@ -114,6 +114,7 @@
   .meta .free { color: var(--ink); font-weight: 600; }
   .cal-link { font-size: .82rem; color: var(--muted); text-underline-offset: 3px; }
   .cal-link:hover { color: var(--ink); }
+  .edit-link { font-size: .82rem; color: var(--muted); text-underline-offset: 3px; }
   .hide-btn { background: none; border: 0; padding: 0; font-size: .82rem; color: var(--muted);
     text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
   .run { font-size: .85rem; color: var(--muted); margin-top: .2rem; }
@@ -211,7 +212,8 @@
 <main class="wrap" id="main" aria-live="polite"></main>
 
 <footer class="wrap"><p id="updated" hidden></p>Times and prices come from each venue's website. Check there before you go.
-  <p id="review-link" hidden><a href="/review"></a></p></footer>
+  <p id="review-link" hidden><a href="/review"></a></p>
+  <p id="add-link" hidden><a href="/add">Add an event</a></p></footer>
 
 <script>window.CATFORD_STATIC = "data.json";</script>
 <script>
@@ -322,6 +324,7 @@ async function loadOptions() {
     el.hidden = false;
   }
   // Only on the computer running the app: a reminder that some events need checking.
+  if (ADMIN) document.getElementById("add-link").hidden = false;
   if (ADMIN && (data.to_review || data.problems)) {
     const parts = [];
     if (data.to_review) parts.push(`${data.to_review} event${data.to_review > 1 ? "s" : ""} to check`);
@@ -472,6 +475,7 @@ function eventHtml(e, onDay) {
         ${shortPrice(e)}
         <a class="cal-link" href="${esc(calendarUrl(e, onDay))}" target="_blank" rel="noopener"
            aria-label="Add ${esc(e.title)} to Google Calendar">Add to calendar</a>
+        ${ADMIN && e.source === "manual" ? `<a class="edit-link" href="/add?uid=${encodeURIComponent(e.uid)}">Edit</a>` : ""}
         ${ADMIN ? `<button type="button" class="hide-btn" data-hide="${esc(e.uid)}" data-title="${esc(e.title)}">Hide</button>` : ""}
       </div>
     </div>
